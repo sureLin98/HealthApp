@@ -1,8 +1,10 @@
 package com.android.healthapp;
 
 import android.annotation.SuppressLint;
+import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
@@ -33,6 +35,12 @@ import androidx.navigation.ui.NavigationUI;
 
 import com.android.healthapp.databinding.ActivityMainBinding;
 
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -54,14 +62,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         BottomNavigationView navView = findViewById(R.id.nav_view);
         // Passing each menu ID as a set of Ids because each
         // menu should be considered as top level destinations.
-        AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(
-                R.id.navigation_home, R.id.navigation_dashboard, R.id.navigation_notifications)
+        AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(R.id.navigation_home, R.id.navigation_dashboard, R.id.navigation_notifications)
                 .build();
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
         NavigationUI.setupWithNavController(binding.navView, navController);
 
+    }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mBLESPPUtils.onDestroy();
     }
 
     @Override
@@ -71,15 +83,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        mBLESPPUtils.onDestroy();
-    }
-
-    /**
-     * 申请运行时权限，不授予会搜索不到设备
-     */
     private void initPermissions() {
         if (ContextCompat.checkSelfPermission(this, "android.permission-group.LOCATION") != 0) {
             ActivityCompat.requestPermissions(
@@ -93,11 +96,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    /**
-     * 当发现新设备
-     *
-     * @param device 设备
-     */
+    /**   蓝牙串口工具类接口实现     **/
+
     @Override
     public void onFoundDevice(BluetoothDevice device) {
         // 判断是不是重复的
@@ -117,11 +117,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         });
     }
 
-    /**
-     * 当连接成功
-     *
-     * @param device 设备
-     */
     @Override
     public void onConnectSuccess(final BluetoothDevice device) {
         runOnUiThread(new Runnable() {
@@ -130,24 +125,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Toast.makeText(MainActivity.this,"连接到"+device.getName(),Toast.LENGTH_LONG).show();
             }
         });
+        //保存已连接的蓝牙设备的MAC地址
+        SharedPreferences.Editor editor=getSharedPreferences("data",MODE_PRIVATE).edit();
+        editor.putString("mac",device.getAddress());
+        editor.commit();
+        if(mDeviceDialogCtrl!=null) mDeviceDialogCtrl.dismiss();
+    }
+
+    @Override
+    public void onConnectFailed(final String msg) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(MainActivity.this,msg,Toast.LENGTH_LONG).show();
+            }
+        });
         mDeviceDialogCtrl.dismiss();
     }
 
-    /**
-     * 当连接失败
-     *
-     * @param msg 失败信息
-     */
-    @Override
-    public void onConnectFailed(final String msg) {
-
-    }
-
-    /**
-     * 当接收到 byte 数组
-     *
-     * @param bytes 内容
-     */
     @Override
     public void onReceiveBytes(final byte[] bytes) {
         String dataStr = new String(bytes);
@@ -156,19 +151,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         HealthDataFragment.onDataUpdate(dataPacket);
     }
 
-    /**
-     * 当调用接口发送 byte 数组
-     *
-     * @param bytes 内容
-     */
     @Override
     public void onSendBytes(final byte[] bytes) {
 
     }
 
-    /**
-     * 当结束搜索设备
-     */
     @Override
     public void onFinishFoundDevice() {
 
@@ -199,6 +186,28 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 mDeviceDialogCtrl = new DeviceDialogCtrl(this);
                 mDeviceDialogCtrl.show();
                 break;
+
+            case R.id.connected_bt:
+                // 初始化
+                mBLESPPUtils = new BLESPPUtils(this, this);
+                // 启用日志输出
+                mBLESPPUtils.enableBluetooth();
+                // 设置接收停止标志位字符串
+                mBLESPPUtils.setStopString("\r\n");
+                // 用户没有开启蓝牙的话打开蓝牙
+                if (!mBLESPPUtils.isBluetoothEnable()) mBLESPPUtils.enableBluetooth();
+                // 启动工具类
+                mBLESPPUtils.onCreate();
+                BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+                mBluetoothAdapter.cancelDiscovery();
+                //获取已配对过的蓝牙设备的MAC地址
+                SharedPreferences sharedPreferences=getSharedPreferences("data",MODE_PRIVATE);
+                String mac=sharedPreferences.getString("mac"," ");
+                if(mac==" ") Toast.makeText(this,"本地没有已配对的蓝牙设备",Toast.LENGTH_LONG).show();
+                else mBLESPPUtils.connect(mac);
+
+                break;
+
             default:
                 return super.onOptionsItemSelected(item);
         }

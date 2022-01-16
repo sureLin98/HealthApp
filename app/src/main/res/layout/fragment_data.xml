@@ -8,12 +8,12 @@
     android:orientation="vertical">
 
     <TextView
-        android:id="@+id/text_home"
+        android:id="@+id/state"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
-        android:textSize="18dp"
-        android:text="当前状态"/>
+        android:textColor="@color/black"
+        android:text="蓝牙检测"/>
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -38,6 +38,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="体温"
+                    android:textColor="@color/black"
                     android:gravity="center"/>
 
                 <com.github.mikephil.charting.charts.LineChart
@@ -59,6 +60,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="血氧"
+                    android:textColor="@color/black"
                     android:gravity="center"/>
 
                 <com.github.mikephil.charting.charts.LineChart
@@ -88,6 +90,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="心率"
+                    android:textColor="@color/black"
                     android:gravity="center"/>
 
                 <com.github.mikephil.charting.charts.LineChart
@@ -109,6 +112,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="收缩压"
+                    android:textColor="@color/black"
                     android:gravity="center"/>
 
                 <com.github.mikephil.charting.charts.LineChart
@@ -138,6 +142,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="舒张压"
+                    android:textColor="@color/black"
                     android:gravity="center"/>
 
                 <com.github.mikephil.charting.charts.LineChart
@@ -159,6 +164,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="微循环"
+                    android:textColor="@color/black"
                     android:gravity="center"/>
 
                 <com.github.mikephil.charting.charts.LineChart
@@ -173,10 +179,26 @@
 
     </LinearLayout>
 
-    <com.github.mikephil.charting.charts.LineChart
-        android:id="@+id/ac_chart"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"/>
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="脉搏波形图"
+            android:textColor="@color/black"
+            android:gravity="center"/>
+
+        <com.github.mikephil.charting.charts.LineChart
+            android:id="@+id/ac_chart"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_marginBottom="70dp"/>
+
+    </LinearLayout>
 
 </LinearLayout>

@@ -2,6 +2,7 @@ package com.android.healthapp.ui.healthData;
 
 import android.graphics.Color;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -25,17 +26,23 @@ import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Queue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class HealthDataFragment extends Fragment {
 
-    static LineChart acLineChart;
-    static LineChart tempLineChart,spo2LineChart,hrLineChart,spLineChart,dpLineChart,mcLineChart;
-    static TextView tempTextView,spo2TextView,hrTextView,spTextView,dpTextView,mcTextView;
-    static List<List<Entry>> dataList=new ArrayList<>();
+    private static LineChart acLineChart;
+    private static LineChart tempLineChart,spo2LineChart,hrLineChart,spLineChart,dpLineChart,mcLineChart;
+    private static TextView tempTextView,spo2TextView,hrTextView,spTextView,dpTextView,mcTextView;
+    private static List<List<Entry>> dataList=new ArrayList<>();
+    private static int count=0;
+    private static Queue<short[]> queue=new LinkedList<>();
 
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
@@ -56,7 +63,7 @@ public class HealthDataFragment extends Fragment {
         dpTextView=view.findViewById(R.id.dp);
         mcTextView=view.findViewById(R.id.mc);
 
-        for(int i=0;i<6;i++){
+        for(int i=0;i<7;i++){
             dataList.add(new ArrayList<>());
         }
 
@@ -67,18 +74,17 @@ public class HealthDataFragment extends Fragment {
     * 数据更新
     * */
     public static void onDataUpdate(MainActivity.DataPacket dataPacket){
-        drawLineChart(0,tempLineChart,dataPacket.temp,0,60,tempTextView,"体温");
-        drawLineChart(1,spo2LineChart,dataPacket.spo2,0,100,spo2TextView,"血氧");
-        drawLineChart(2,hrLineChart,dataPacket.heartRate,0,150,hrTextView,"心率");
-        drawLineChart(3,spLineChart,dataPacket.Sp,0,200,spTextView,"收缩压");
-        drawLineChart(4,dpLineChart,dataPacket.Dp,0,100,dpTextView,"舒张压");
-        drawLineChart(5,mcLineChart,dataPacket.Mc,0,100,mcTextView,"微循环");
-
+        drawLineChart(0,tempLineChart,dataPacket.temp,0,60,tempTextView,"体温","℃");
+        drawLineChart(1,spo2LineChart,dataPacket.spo2,0,100,spo2TextView,"血氧","%");
+        drawLineChart(2,hrLineChart,dataPacket.heartRate,0,150,hrTextView,"心率","bpm");
+        drawLineChart(3,spLineChart,dataPacket.Sp,0,200,spTextView,"收缩压","nmHg");
+        drawLineChart(4,dpLineChart,dataPacket.Dp,0,100,dpTextView,"舒张压","nmHg");
+        drawLineChart(5,mcLineChart,dataPacket.Mc,0,100,mcTextView,"微循环","%");
+        drawLineChart(6,acLineChart,dataPacket.acdata);
     }
 
-    private static void drawLineChart(int index, LineChart lineChart, float data,float min,float max,TextView textView,String name){
-
-        textView.setText(name+": "+Float.toString(data));
+    private static void drawLineChart(int index, LineChart lineChart, float data,float min,float max,TextView textView,String name,String dw){
+        textView.setText(name+": "+Float.toString(data)+dw);
 
         List<Entry> list=dataList.get(index);
         list.add(new Entry(list.size()+1,data));
@@ -88,16 +94,17 @@ public class HealthDataFragment extends Fragment {
         if(list.size()>15)
             lineDataSet=new LineDataSet(list.subList(list.size()-15,list.size()-1),"temp");
         else
-            lineDataSet=new LineDataSet(list,"temp");
+            lineDataSet=new LineDataSet(list,"baseData");
 
-        //lineDataSet.setDrawCircles(false);
+        lineDataSet.setDrawCircles(false);
         lineDataSet.setColor(Color.BLUE);
         lineDataSet.setCircleColor(Color.RED);
         lineDataSet.setDrawValues(false);
+        lineDataSet.setDrawCircleHole(false);
+        lineDataSet.setDrawFilled(true);
 
         LineData lineData=new LineData(lineDataSet);
 
-        lineChart.setNoDataText("无数据");
         lineChart.getLegend().setEnabled(false);
         lineChart.getDescription().setEnabled(false);
         lineChart.setData(lineData);
@@ -106,6 +113,46 @@ public class HealthDataFragment extends Fragment {
         lineChart.getAxisLeft().setAxisMinimum(min);
         lineChart.getAxisRight().setAxisMaximum(max);
         lineChart.getAxisRight().setAxisMinimum(min);
+
+
+        lineChart.invalidate();
+    }
+
+    private static void drawLineChart(int index,LineChart lineChart,short[] acdata){
+        List<Entry> list=dataList.get(index);
+        int j=0;
+        list.clear();
+
+        queue.offer(acdata);
+        if(queue.size()>6) queue.poll();
+
+        for(short[] x : queue){
+            for(int i=0;i<64;i++,j++){
+                list.add(new Entry(j,62-x[i]));
+            }
+        }
+
+        LineDataSet lineDataSet;
+
+        lineDataSet=new LineDataSet(list,"acData");
+
+        lineDataSet.setDrawCircles(false);
+        lineDataSet.setColor(Color.BLUE);
+        lineDataSet.setCircleColor(Color.RED);
+        lineDataSet.setDrawValues(false);
+        lineDataSet.setDrawCircleHole(false);
+        lineDataSet.setDrawFilled(true);
+
+        LineData lineData=new LineData(lineDataSet);
+
+        lineChart.getLegend().setEnabled(false);
+        lineChart.getDescription().setEnabled(false);
+        lineChart.setData(lineData);
+        lineChart.getXAxis().setEnabled(false);
+        lineChart.getAxisLeft().setAxisMaximum(80);
+        lineChart.getAxisLeft().setAxisMinimum(-80);
+        lineChart.getAxisRight().setAxisMaximum(80);
+        lineChart.getAxisRight().setAxisMinimum(-80);
 
         lineChart.invalidate();
     }
