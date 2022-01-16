@@ -1,4 +1,4 @@
-package com.android.healthapp.ui.home;
+package com.android.healthapp.ui.healthData;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;

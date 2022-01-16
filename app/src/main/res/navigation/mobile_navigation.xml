@@ -7,19 +7,19 @@
 
     <fragment
         android:id="@+id/navigation_home"
-        android:name="com.android.healthapp.ui.home.HomeFragment"
+        android:name="com.android.healthapp.ui.healthData.HealthDataFragment"
         android:label="@string/title_home"
-        tools:layout="@layout/fragment_home" />
+        tools:layout="@layout/fragment_data" />
 
     <fragment
         android:id="@+id/navigation_dashboard"
-        android:name="com.android.healthapp.ui.dashboard.DashboardFragment"
+        android:name="com.android.healthapp.ui.healthAssess.HealthAssessFragment"
         android:label="@string/title_dashboard"
-        tools:layout="@layout/fragment_dashboard" />
+        tools:layout="@layout/fragment_assess" />
 
     <fragment
         android:id="@+id/navigation_notifications"
-        android:name="com.android.healthapp.ui.notifications.NotificationsFragment"
+        android:name="com.android.healthapp.ui.remote.RemoteFragment"
         android:label="@string/title_notifications"
-        tools:layout="@layout/fragment_notifications" />
+        tools:layout="@layout/fragment_remote" />
 </navigation>

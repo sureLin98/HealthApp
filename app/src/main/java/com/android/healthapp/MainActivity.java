@@ -17,6 +17,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.healthapp.ui.healthData.HealthDataFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import androidx.appcompat.app.AlertDialog;
@@ -33,16 +34,15 @@ import androidx.navigation.ui.NavigationUI;
 import com.android.healthapp.databinding.ActivityMainBinding;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener,BLESPPUtils.OnBluetoothAction {
 
     private ActivityMainBinding binding;
-    BLESPPUtils mBLESPPUtils;
+    private BLESPPUtils mBLESPPUtils;
     // 保存搜索到的设备，避免重复
     private ArrayList<BluetoothDevice> mDevicesList = new ArrayList<>();
-    DeviceDialogCtrl mDeviceDialogCtrl;
-    TextView mLogTv;
-    String dataStr;
+    private DeviceDialogCtrl mDeviceDialogCtrl;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,15 +75,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onDestroy() {
         super.onDestroy();
         mBLESPPUtils.onDestroy();
-    }
-
-    /**
-     * 替换Fragment
-     */
-    private void replaceFragment(Fragment fragment) {
-        FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-        //transaction.replace(R.id.frame_layout,fragment);
-        transaction.commit();
     }
 
     /**
@@ -159,8 +150,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      */
     @Override
     public void onReceiveBytes(final byte[] bytes) {
-        dataStr = new String(bytes);
+        String dataStr = new String(bytes);
+        DataPacket dataPacket=new DataPacket(dataStr);
         Log.d("data", dataStr);
+        HealthDataFragment.onDataUpdate(dataPacket);
     }
 
     /**
@@ -178,6 +171,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      */
     @Override
     public void onFinishFoundDevice() {
+
     }
 
     @Override
@@ -201,7 +195,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 if (!mBLESPPUtils.isBluetoothEnable()) mBLESPPUtils.enableBluetooth();
                 // 启动工具类
                 mBLESPPUtils.onCreate();
-
+                //蓝牙连接对话框显示
                 mDeviceDialogCtrl = new DeviceDialogCtrl(this);
                 mDeviceDialogCtrl.show();
                 break;
@@ -325,4 +319,47 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
+    /**
+     * 数据包类
+     */
+    public class DataPacket{
+
+        //数据字符串
+        private String data;
+        //体温
+        public float temp;
+        //血氧
+        public int spo2;
+        //心率
+        public int heartRate;
+        //收缩压
+        public int Sp;
+        //舒张压
+        public int Dp;
+        //微循环
+        public int Mc;
+        //脉搏波数据
+        public short[] acdata=new short[64];
+
+        DataPacket(String dataStr){
+            data=dataStr;
+            Unpack();
+        }
+
+        private void Unpack(){
+            String[] str=data.split("#");
+            String[] data1=str[0].split(" ");
+            String[] data2=str[1].split(" ");
+            temp=Float.valueOf(data1[0]).floatValue();
+            spo2=Integer.valueOf(data1[1]).intValue();
+            heartRate=Integer.valueOf(data1[2]).intValue();
+            Sp=Integer.valueOf(data1[3]).intValue();
+            Dp=Integer.valueOf(data1[4]).intValue();
+            Mc=Integer.valueOf(data1[5]).intValue();
+            for(int i=0;i<64;i++){
+                acdata[i]=Short.valueOf(data2[i]).shortValue();
+            }
+        }
+
+    }
 }
