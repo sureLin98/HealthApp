@@ -42,7 +42,7 @@ public class HealthDataFragment extends Fragment {
     private static TextView tempTextView,spo2TextView,hrTextView,spTextView,dpTextView,mcTextView;
     private static List<List<Entry>> dataList=new ArrayList<>();
     private static int count=0;
-    private static Queue<short[]> queue=new LinkedList<>();
+    private static Queue<byte[]> queue=new LinkedList<>();
 
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
@@ -63,7 +63,7 @@ public class HealthDataFragment extends Fragment {
         dpTextView=view.findViewById(R.id.dp);
         mcTextView=view.findViewById(R.id.mc);
 
-        for(int i=0;i<7;i++){
+        for(int i=0;i<6;i++){
             dataList.add(new ArrayList<>());
         }
 
@@ -80,7 +80,7 @@ public class HealthDataFragment extends Fragment {
         drawLineChart(3,spLineChart,dataPacket.Sp,0,200,spTextView,"收缩压","nmHg");
         drawLineChart(4,dpLineChart,dataPacket.Dp,0,100,dpTextView,"舒张压","nmHg");
         drawLineChart(5,mcLineChart,dataPacket.Mc,0,100,mcTextView,"微循环","%");
-        drawLineChart(6,acLineChart,dataPacket.acdata);
+        drawLineChart(acLineChart,dataPacket.acdata);
     }
 
     private static void drawLineChart(int index, LineChart lineChart, float data,float min,float max,TextView textView,String name,String dw){
@@ -118,15 +118,14 @@ public class HealthDataFragment extends Fragment {
         lineChart.invalidate();
     }
 
-    private static void drawLineChart(int index,LineChart lineChart,short[] acdata){
-        List<Entry> list=dataList.get(index);
+    private static void drawLineChart(LineChart lineChart,byte[] acdata){
+        List<Entry> list=new ArrayList<>();
         int j=0;
-        list.clear();
 
         queue.offer(acdata);
         if(queue.size()>6) queue.poll();
 
-        for(short[] x : queue){
+        for(byte[] x : queue){
             for(int i=0;i<64;i++,j++){
                 list.add(new Entry(j,62-x[i]));
             }

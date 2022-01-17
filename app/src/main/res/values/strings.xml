@@ -3,6 +3,7 @@
     <string name="title_home">健康数据</string>
     <string name="title_dashboard">健康评估</string>
     <string name="title_notifications">远程监控</string>
-    <string name="title_connectBT">连接新蓝牙设备</string>
+    <string name="title_connectBT">连接新的蓝牙设备</string>
     <string name="title_connectedBT">连接已保存的蓝牙设备</string>
+    <string name="title_export_data">导出健康数据</string>
 </resources>

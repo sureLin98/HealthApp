@@ -3,8 +3,11 @@ package com.android.healthapp;
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
@@ -26,23 +29,16 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentTransaction;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
-
 import com.android.healthapp.databinding.ActivityMainBinding;
+import com.liyu.sqlitetoexcel.SQLiteToExcel;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
+import java.sql.Time;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener,BLESPPUtils.OnBluetoothAction {
 
@@ -96,6 +92,46 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
+    public void saveHealthData(DataPacket dataPacket){
+        HealthDatabaseHelper healthDatabaseHelper=new HealthDatabaseHelper(this,"HealthDatabase",null,1);
+        SQLiteDatabase database=healthDatabaseHelper.getWritableDatabase();
+        ContentValues contentValues=new ContentValues();
+        contentValues.put("date",dataPacket.timeStamp);
+        contentValues.put("temperature",dataPacket.temp);
+        contentValues.put("SpO2",dataPacket.spo2);
+        contentValues.put("heartRate",dataPacket.heartRate);
+        contentValues.put("Sp",dataPacket.Sp);
+        contentValues.put("Dp",dataPacket.Dp);
+        contentValues.put("Mc",dataPacket.Mc);
+        contentValues.put("acdata",dataPacket.acdata);
+        database.insert("HealthData",null,contentValues);
+        database.close();
+    }
+
+    public List<DataPacket> readHealthData(){
+        List<DataPacket> list=new ArrayList<>();
+        HealthDatabaseHelper healthDatabaseHelper=new HealthDatabaseHelper(this,"HealthDatabase",null,1);
+        SQLiteDatabase database=healthDatabaseHelper.getReadableDatabase();
+        Cursor cursor=database.query("HealthData",null,null,null,null,null,null);
+        if(cursor.moveToFirst()){
+            do{
+                DataPacket dataPacket=new DataPacket();
+                dataPacket.timeStamp=cursor.getLong(0);
+                dataPacket.temp=cursor.getFloat(1);
+                dataPacket.spo2=cursor.getInt(2);
+                dataPacket.heartRate=cursor.getInt(3);
+                dataPacket.Sp=cursor.getInt(4);
+                dataPacket.Dp=cursor.getInt(5);
+                dataPacket.Mc=cursor.getInt(6);
+                dataPacket.acdata=cursor.getBlob(7);
+                list.add(dataPacket);
+            }while(cursor.moveToNext());
+        }
+        cursor.close();
+        database.close();
+        return list;
+    }
+
     /**   蓝牙串口工具类接口实现     **/
 
     @Override
@@ -147,7 +183,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onReceiveBytes(final byte[] bytes) {
         String dataStr = new String(bytes);
         DataPacket dataPacket=new DataPacket(dataStr);
-        Log.d("data", dataStr);
+        if(dataPacket.state==1) saveHealthData(dataPacket);
         HealthDataFragment.onDataUpdate(dataPacket);
     }
 
@@ -185,6 +221,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 //蓝牙连接对话框显示
                 mDeviceDialogCtrl = new DeviceDialogCtrl(this);
                 mDeviceDialogCtrl.show();
+
                 break;
 
             case R.id.connected_bt:
@@ -206,6 +243,30 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 if(mac==" ") Toast.makeText(this,"本地没有已配对的蓝牙设备",Toast.LENGTH_LONG).show();
                 else mBLESPPUtils.connect(mac);
 
+                break;
+
+            case R.id.export_data:
+                new SQLiteToExcel
+                        .Builder(this)
+                        .setDataBase(this.getDatabasePath("HealthDatabase").getAbsolutePath())
+                        .setTables("HealthData")
+                        .setOutputFileName("HealthData.xls")
+                        .start(new SQLiteToExcel.ExportListener() {
+                            @Override
+                            public void onStart() {
+
+                            }
+
+                            @Override
+                            public void onCompleted(String s) {
+                                Toast.makeText(MainActivity.this,"数据导出成功！保存路径："+s,Toast.LENGTH_LONG).show();
+                            }
+
+                            @Override
+                            public void onError(Exception e) {
+                                Toast.makeText(MainActivity.this,"数据导出失败！",Toast.LENGTH_LONG).show();
+                            }
+                        });
                 break;
 
             default:
@@ -335,30 +396,40 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         //数据字符串
         private String data;
+        //时间戳
+        public long timeStamp=0;
+        //数据状态 1有效 0无效
+        public int state=0;
         //体温
-        public float temp;
+        public float temp=0;
         //血氧
-        public int spo2;
+        public int spo2=0;
         //心率
-        public int heartRate;
+        public int heartRate=0;
         //收缩压
-        public int Sp;
+        public int Sp=0;
         //舒张压
-        public int Dp;
+        public int Dp=0;
         //微循环
-        public int Mc;
+        public int Mc=0;
         //脉搏波数据
-        public short[] acdata=new short[64];
+        public byte[] acdata=new byte[64];
 
         DataPacket(String dataStr){
             data=dataStr;
-            Unpack();
+            timeStamp=System.currentTimeMillis();
+            unpack();
         }
 
-        private void Unpack(){
+        DataPacket(){
+            data=null;
+        }
+
+        public void unpack(){
             String[] str=data.split("#");
-            String[] data1=str[0].split(" ");
-            String[] data2=str[1].split(" ");
+            state=Integer.valueOf(str[0]).intValue();
+            String[] data1=str[1].split(" ");
+            String[] data2=str[2].split(" ");
             temp=Float.valueOf(data1[0]).floatValue();
             spo2=Integer.valueOf(data1[1]).intValue();
             heartRate=Integer.valueOf(data1[2]).intValue();
@@ -366,7 +437,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             Dp=Integer.valueOf(data1[4]).intValue();
             Mc=Integer.valueOf(data1[5]).intValue();
             for(int i=0;i<64;i++){
-                acdata[i]=Short.valueOf(data2[i]).shortValue();
+                acdata[i]=Byte.valueOf(data2[i]).byteValue();
             }
         }
 
