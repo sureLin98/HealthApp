@@ -9,6 +9,8 @@ import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
+import android.media.MediaSession2Service;
+import android.nfc.Tag;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
@@ -23,6 +25,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.healthapp.ui.healthData.HealthDataFragment;
+import com.android.healthapp.ui.remote.RemoteFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import androidx.appcompat.app.AlertDialog;
@@ -36,9 +39,22 @@ import androidx.navigation.ui.NavigationUI;
 import com.android.healthapp.databinding.ActivityMainBinding;
 import com.liyu.sqlitetoexcel.SQLiteToExcel;
 
+import org.eclipse.paho.android.service.MqttAndroidClient;
+import org.eclipse.paho.client.mqttv3.IMqttActionListener;
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
+import org.eclipse.paho.client.mqttv3.IMqttToken;
+import org.eclipse.paho.client.mqttv3.MqttCallback;
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
+import org.eclipse.paho.client.mqttv3.MqttException;
+import org.eclipse.paho.client.mqttv3.MqttMessage;
+
+import java.math.BigInteger;
 import java.sql.Time;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener,BLESPPUtils.OnBluetoothAction {
 
@@ -47,6 +63,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     // 保存搜索到的设备，避免重复
     private ArrayList<BluetoothDevice> mDevicesList = new ArrayList<>();
     private DeviceDialogCtrl mDeviceDialogCtrl;
+
+    private final String TAG="MainActivity";
+
+    RemoteFragment.MQTTManager mqttManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,6 +83,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
         NavigationUI.setupWithNavController(binding.navView, navController);
+
+        //RemoteFragment.MQTTManager.mContext=getApplicationContext();
 
     }
 
@@ -92,8 +114,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    public void saveHealthData(DataPacket dataPacket){
-        HealthDatabaseHelper healthDatabaseHelper=new HealthDatabaseHelper(this,"HealthDatabase",null,1);
+    public static void saveHealthData(Context context,DataPacket dataPacket){
+        HealthDatabaseHelper healthDatabaseHelper=new HealthDatabaseHelper(context,"HealthDatabase",null,1);
         SQLiteDatabase database=healthDatabaseHelper.getWritableDatabase();
         ContentValues contentValues=new ContentValues();
         contentValues.put("date",dataPacket.timeStamp);
@@ -165,7 +187,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         SharedPreferences.Editor editor=getSharedPreferences("data",MODE_PRIVATE).edit();
         editor.putString("mac",device.getAddress());
         editor.commit();
+        HealthDataFragment.enableBtDetect();
         if(mDeviceDialogCtrl!=null) mDeviceDialogCtrl.dismiss();
+        HealthDataFragment.setStateText("蓝牙监控");
+        //启动MQTT
+        mqttManager=new RemoteFragment.MQTTManager(getApplicationContext());
+        mqttManager.buildClient();
+
     }
 
     @Override
@@ -176,14 +204,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Toast.makeText(MainActivity.this,msg,Toast.LENGTH_LONG).show();
             }
         });
-        mDeviceDialogCtrl.dismiss();
+        if(mDeviceDialogCtrl!=null) mDeviceDialogCtrl.dismiss();
     }
 
     @Override
     public void onReceiveBytes(final byte[] bytes) {
         String dataStr = new String(bytes);
         DataPacket dataPacket=new DataPacket(dataStr);
-        if(dataPacket.state==1) saveHealthData(dataPacket);
+        if(dataPacket.state==1) saveHealthData(getApplicationContext(),dataPacket);
+        if(HealthDataFragment.isBtDetect()==1 && mqttManager.isOK==true){
+           mqttManager.sendMQTT("data",dataStr);
+        }
+        Log.d(TAG, "onReceiveBytes: "+dataStr);
         HealthDataFragment.onDataUpdate(dataPacket);
     }
 
@@ -392,7 +424,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     /**
      * 数据包类
      */
-    public class DataPacket{
+    public static class DataPacket{
 
         //数据字符串
         private String data;
@@ -415,13 +447,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         //脉搏波数据
         public byte[] acdata=new byte[64];
 
-        DataPacket(String dataStr){
+        public DataPacket(String dataStr){
             data=dataStr;
             timeStamp=System.currentTimeMillis();
             unpack();
         }
 
-        DataPacket(){
+        public DataPacket(){
             data=null;
         }
 
@@ -442,4 +474,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
 
     }
+
+
 }

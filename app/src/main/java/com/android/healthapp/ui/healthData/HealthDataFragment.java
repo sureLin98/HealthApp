@@ -1,5 +1,6 @@
 package com.android.healthapp.ui.healthData;
 
+import android.app.Activity;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
@@ -18,6 +19,7 @@ import androidx.lifecycle.ViewModelProvider;
 import com.android.healthapp.MainActivity;
 import com.android.healthapp.R;
 import com.android.healthapp.databinding.FragmentDataBinding;
+import com.android.healthapp.ui.remote.RemoteFragment;
 import com.github.mikephil.charting.charts.BarChart;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.data.BarEntry;
@@ -39,10 +41,12 @@ public class HealthDataFragment extends Fragment {
 
     private static LineChart acLineChart;
     private static LineChart tempLineChart,spo2LineChart,hrLineChart,spLineChart,dpLineChart,mcLineChart;
-    private static TextView tempTextView,spo2TextView,hrTextView,spTextView,dpTextView,mcTextView;
+    private static TextView tempTextView,spo2TextView,hrTextView,spTextView,dpTextView,mcTextView,stateTextView;
     private static List<List<Entry>> dataList=new ArrayList<>();
     private static int count=0;
     private static Queue<byte[]> queue=new LinkedList<>();
+
+    public static int btDetect=0;
 
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
@@ -63,11 +67,37 @@ public class HealthDataFragment extends Fragment {
         dpTextView=view.findViewById(R.id.dp);
         mcTextView=view.findViewById(R.id.mc);
 
+        stateTextView=view.findViewById(R.id.state);
+
+        if(HealthDataFragment.isBtDetect()==1) stateTextView.setText("蓝牙监控");
+        else if(RemoteFragment.isRemoteDetect()==1) stateTextView.setText("远程监控");
+
         for(int i=0;i<6;i++){
             dataList.add(new ArrayList<>());
         }
 
         return view;
+    }
+
+    public static int isBtDetect(){
+        return btDetect;
+    }
+
+    public static void enableBtDetect(){
+        btDetect=1;
+    }
+
+    public static void disableBtDetect(){
+        btDetect=0;
+    }
+
+    public static void setStateText(String inf){
+        stateTextView.post(new Runnable() {
+            @Override
+            public void run() {
+                stateTextView.setText(inf);
+            }
+        });
     }
 
     /**
@@ -84,7 +114,13 @@ public class HealthDataFragment extends Fragment {
     }
 
     private static void drawLineChart(int index, LineChart lineChart, float data,float min,float max,TextView textView,String name,String dw){
-        textView.setText(name+": "+Float.toString(data)+dw);
+        textView.post(new Runnable() {
+            @Override
+            public void run() {
+                textView.setText(name+": "+Float.toString(data)+dw);
+            }
+        });
+
 
         List<Entry> list=dataList.get(index);
         list.add(new Entry(list.size()+1,data));
