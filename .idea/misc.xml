@@ -3,9 +3,16 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
+        <entry key="..\:/Android_Projects/HealthApp/app/src/main/res/drawable-anydpi/ic_action_assess.xml" value="0.38229166666666664" />
+        <entry key="..\:/Android_Projects/HealthApp/app/src/main/res/drawable-anydpi/ic_action_remote.xml" value="0.38229166666666664" />
+        <entry key="..\:/Android_Projects/HealthApp/app/src/main/res/drawable/ic_home_black_24dp.xml" value="0.38229166666666664" />
         <entry key="..\:/Android_Projects/HealthApp/app/src/main/res/drawable/rect_round_button_ripple.xml" value="0.38229166666666664" />
         <entry key="..\:/Android_Projects/HealthApp/app/src/main/res/layout/activity_main.xml" value="0.36614583333333334" />
-        <entry key="..\:/Android_Projects/HealthApp/app/src/main/res/layout/fragment_assess.xml" value="0.36614583333333334" />
+        <entry key="..\:/Android_Projects/HealthApp/app/src/main/res/layout/dialog.xml" value="0.36614583333333334" />
+        <entry key="..\:/Android_Projects/HealthApp/app/src/main/res/layout/fragment_assess.xml" value="0.5" />
+        <entry key="..\:/Android_Projects/HealthApp/app/src/main/res/layout/fragment_assess2.xml" value="0.36614583333333334" />
+        <entry key="..\:/Android_Projects/HealthApp/app/src/main/res/layout/fragment_assess_1.xml" value="0.33" />
+        <entry key="..\:/Android_Projects/HealthApp/app/src/main/res/layout/fragment_assess_2.xml" value="0.36614583333333334" />
         <entry key="..\:/Android_Projects/HealthApp/app/src/main/res/layout/fragment_data.xml" value="0.36614583333333334" />
         <entry key="..\:/Android_Projects/HealthApp/app/src/main/res/layout/fragment_home.xml" value="0.36614583333333334" />
         <entry key="..\:/Android_Projects/HealthApp/app/src/main/res/layout/fragment_remote.xml" value="0.3" />

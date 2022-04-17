@@ -15,7 +15,7 @@
         android:id="@+id/navigation_dashboard"
         android:name="com.android.healthapp.ui.healthAssess.HealthAssessFragment"
         android:label="@string/title_dashboard"
-        tools:layout="@layout/fragment_assess" />
+        tools:layout="@layout/fragment_assess_1" />
 
     <fragment
         android:id="@+id/navigation_notifications"

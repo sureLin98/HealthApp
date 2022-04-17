@@ -64,6 +64,7 @@ public class RemoteFragment extends Fragment {
 
         editText=view.findViewById(R.id.user_name);
         button=view.findViewById(R.id.remote_button);
+
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -72,6 +73,9 @@ public class RemoteFragment extends Fragment {
                 mqttManager.buildClient();
                 remoteUserName=editText.getText().toString();
                 if(remoteUserName.length()<1) remoteUserName=Build.MODEL;
+                editText.setEnabled(false);
+                editText.setText("远程监控已开启，用户名："+remoteUserName);
+                button.setEnabled(false);
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
@@ -92,9 +96,11 @@ public class RemoteFragment extends Fragment {
 
         if(!remoteUserName.equals("")){
             if(remoteDetect==1){
-                editText.setText("正在进行远程监控");
+                //远程监控端显示
+                editText.setText("远程监控已开启，用户名："+remoteUserName);
             }
             if(HealthDataFragment.btDetect==1){
+                //被监控端显示
                 editText.setText(remoteUserName+"正在进行远程监控");
             }
             editText.setEnabled(false);
@@ -123,7 +129,7 @@ public class RemoteFragment extends Fragment {
 
     public static class MQTTManager {
 
-        public  Context mContext;
+        private Context mContext;
         private MqttAndroidClient mqttAndroidClient;
         private String clientId="d6722eed3eb44c5dbdc4ab78aed5c826";//自定义
 
@@ -155,7 +161,7 @@ public class RemoteFragment extends Fragment {
             public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
                 //connect-onFailure-MqttException (0) - java.net.UnknownHostException
                 TVLog("connect-"+ "onFailure-"+exception);
-                Log.e(TAG, "onFailure: ",exception);
+                Log.e(TAG, "onFailure: (uninstall app)",exception);
                 startReconnectTask();
             }
         };
@@ -184,7 +190,7 @@ public class RemoteFragment extends Fragment {
                     Log.d(TAG, "messageArrived: info"+data);
                     remoteUserName=new String(message.getPayload());
                 }
-
+                Log.d(TAG, "messageArrived: "+topic+"--"+data);
             }
 
             @Override

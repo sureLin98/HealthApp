@@ -9,9 +9,13 @@ import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
-import android.media.MediaSession2Service;
-import android.nfc.Tag;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -24,6 +28,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.healthapp.ui.healthAssess.HealthAssessFragment;
 import com.android.healthapp.ui.healthData.HealthDataFragment;
 import com.android.healthapp.ui.remote.RemoteFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -39,24 +44,10 @@ import androidx.navigation.ui.NavigationUI;
 import com.android.healthapp.databinding.ActivityMainBinding;
 import com.liyu.sqlitetoexcel.SQLiteToExcel;
 
-import org.eclipse.paho.android.service.MqttAndroidClient;
-import org.eclipse.paho.client.mqttv3.IMqttActionListener;
-import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
-import org.eclipse.paho.client.mqttv3.IMqttToken;
-import org.eclipse.paho.client.mqttv3.MqttCallback;
-import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
-import org.eclipse.paho.client.mqttv3.MqttException;
-import org.eclipse.paho.client.mqttv3.MqttMessage;
-
-import java.math.BigInteger;
-import java.sql.Time;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener,BLESPPUtils.OnBluetoothAction {
+public class MainActivity extends AppCompatActivity implements BLESPPUtils.OnBluetoothAction,SensorEventListener {
 
     private ActivityMainBinding binding;
     private BLESPPUtils mBLESPPUtils;
@@ -64,9 +55,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private ArrayList<BluetoothDevice> mDevicesList = new ArrayList<>();
     private DeviceDialogCtrl mDeviceDialogCtrl;
 
+    private SensorManager sensorManager;
+
     private final String TAG="MainActivity";
 
     RemoteFragment.MQTTManager mqttManager;
+
+    private int mStepDetector = 0;  // 自应用运行以来STEP_DETECTOR检测到的步数
+    private int mStepCounter = 0;   // 自系统开机以来STEP_COUNTER检测到的步数
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,16 +72,34 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(binding.getRoot());
 
         BottomNavigationView navView = findViewById(R.id.nav_view);
-        // Passing each menu ID as a set of Ids because each
-        // menu should be considered as top level destinations.
+
         AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(R.id.navigation_home, R.id.navigation_dashboard, R.id.navigation_notifications)
                 .build();
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
         NavigationUI.setupWithNavController(binding.navView, navController);
 
-        //RemoteFragment.MQTTManager.mContext=getApplicationContext();
+        sensorManager= (SensorManager) getSystemService(Context.SENSOR_SERVICE);
 
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (sensorManager!=null){
+            sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR),
+                    SensorManager.SENSOR_DELAY_NORMAL);
+            sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER),
+                    SensorManager.SENSOR_DELAY_NORMAL);
+            sensorManager.registerListener(this,sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE ),
+                    SensorManager.SENSOR_DELAY_NORMAL);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        sensorManager.unregisterListener(this);
     }
 
     @Override
@@ -95,10 +109,41 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     @Override
-    public void onClick(View view) {
-        switch (view.getId()) {
+    //TODO：姿态识别
+    public void onSensorChanged(SensorEvent event) {
+        // 传感器返回的数据 三轴加速度
+        switch(event.sensor.getType()){
+            case Sensor.TYPE_GYROSCOPE:
+                float x=event.values[0];
+                float y=event.values[1];
+                float z=event.values[2];
+                StringBuffer buffer = new StringBuffer();
+                buffer.append("X：").append(String.format("%.2f", x)).append("\n");
+                buffer.append("Y：").append(String.format("%.2f", y)).append("\n");
+                buffer.append("Z：").append(String.format("%.2f", z)).append("\n");
+                //Log.d(TAG, "onSensorChanged: \n"+buffer);
 
+                break;
+
+            case Sensor.TYPE_STEP_DETECTOR:
+                if(event.values[0]==1.0f){
+                    Log.d(TAG, "onSensorChanged: Detector");
+                }
+
+                break;
+
+            case Sensor.TYPE_STEP_COUNTER:
+                mStepCounter=(int) event.values[0];
+                Log.d(TAG, "onSensorChanged: Counter="+mStepCounter);
+
+                break;
         }
+
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int i) {
+
     }
 
     private void initPermissions() {
@@ -108,7 +153,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     new String[]{
                             "android.permission.ACCESS_FINE_LOCATION",
                             "android.permission.ACCESS_COARSE_LOCATION",
-                            "android.permission.ACCESS_WIFI_STATE"},
+                            "android.permission.ACCESS_WIFI_STATE",
+                            "android.permission.ACTIVITY_RECOGNITION"},
                     1
             );
         }
@@ -130,7 +176,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         database.close();
     }
 
-    public List<DataPacket> readHealthData(){
+    public List<DataPacket> readHealthData() throws InterruptedException {
         List<DataPacket> list=new ArrayList<>();
         HealthDatabaseHelper healthDatabaseHelper=new HealthDatabaseHelper(this,"HealthDatabase",null,1);
         SQLiteDatabase database=healthDatabaseHelper.getReadableDatabase();
@@ -147,6 +193,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 dataPacket.Mc=cursor.getInt(6);
                 dataPacket.acdata=cursor.getBlob(7);
                 list.add(dataPacket);
+
+                HealthDataFragment.onDataUpdate(dataPacket);
+
             }while(cursor.moveToNext());
         }
         cursor.close();
@@ -210,13 +259,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onReceiveBytes(final byte[] bytes) {
         String dataStr = new String(bytes);
-        DataPacket dataPacket=new DataPacket(dataStr);
-        if(dataPacket.state==1) saveHealthData(getApplicationContext(),dataPacket);
-        if(HealthDataFragment.isBtDetect()==1 && mqttManager.isOK==true){
-           mqttManager.sendMQTT("data",dataStr);
+        if(!dataStr.equals("")){
+            DataPacket dataPacket=new DataPacket(dataStr);
+            if(dataPacket.state==1) saveHealthData(getApplicationContext(),dataPacket);
+            if(HealthDataFragment.isBtDetect()==1 && mqttManager.isOK==true){
+                mqttManager.sendMQTT("data",dataStr);
+            }
+            Log.d(TAG, "onReceiveBytes: "+dataStr);
+            //姿态识别
+            HealthDataFragment.poseIdentify(dataStr.split("#")[3].split(" "),dataStr.split("#")[4].split(" "),dataStr.split("#")[5].split(" "));
+            //更新健康数据
+            HealthDataFragment.onDataUpdate(dataPacket);
+            //健康评估
+            HealthAssessFragment.healthAssess(dataPacket);
         }
-        Log.d(TAG, "onReceiveBytes: "+dataStr);
-        HealthDataFragment.onDataUpdate(dataPacket);
+
     }
 
     @Override
@@ -278,6 +335,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
 
             case R.id.export_data:
+
                 new SQLiteToExcel
                         .Builder(this)
                         .setDataBase(this.getDatabasePath("HealthDatabase").getAbsolutePath())
@@ -299,6 +357,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                 Toast.makeText(MainActivity.this,"数据导出失败！",Toast.LENGTH_LONG).show();
                             }
                         });
+               /*
+                try {
+                    readHealthData();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                */
                 break;
 
             default:
@@ -424,7 +489,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     /**
      * 数据包类
      */
-    public static class DataPacket{
+    public static class DataPacket {
 
         //数据字符串
         private String data;
@@ -457,7 +522,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             data=null;
         }
 
-        public void unpack(){
+        private void unpack(){
             String[] str=data.split("#");
             state=Integer.valueOf(str[0]).intValue();
             String[] data1=str[1].split(" ");
@@ -472,8 +537,5 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 acdata[i]=Byte.valueOf(data2[i]).byteValue();
             }
         }
-
     }
-
-
 }

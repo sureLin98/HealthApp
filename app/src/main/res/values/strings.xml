@@ -6,4 +6,9 @@
     <string name="title_connectBT">连接新的蓝牙设备</string>
     <string name="title_connectedBT">连接已保存的蓝牙设备</string>
     <string name="title_export_data">导出健康数据</string>
+    <string name="health_level_1">健康状况：优</string>
+    <string name="health_level_2">健康状况：良</string>
+    <string name="health_level_3">健康状况：中</string>
+    <string name="health_level_4">健康状况：差</string>
+    <string name="start_health_assess">开始健康评估</string>
 </resources>
