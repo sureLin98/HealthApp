@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -109,7 +110,7 @@ public class MainActivity extends AppCompatActivity implements BLESPPUtils.OnBlu
     }
 
     @Override
-    //TODO：姿态识别
+    //TODO：姿态识别（手机）
     public void onSensorChanged(SensorEvent event) {
         // 传感器返回的数据 三轴加速度
         switch(event.sensor.getType()){
@@ -128,6 +129,9 @@ public class MainActivity extends AppCompatActivity implements BLESPPUtils.OnBlu
             case Sensor.TYPE_STEP_DETECTOR:
                 if(event.values[0]==1.0f){
                     Log.d(TAG, "onSensorChanged: Detector");
+                    HealthDataFragment.postureImageView.setImageResource(R.drawable.walking);
+                }else{
+                    HealthDataFragment.postureImageView.setImageResource(R.drawable.sitting);
                 }
 
                 break;
@@ -160,8 +164,9 @@ public class MainActivity extends AppCompatActivity implements BLESPPUtils.OnBlu
         }
     }
 
+    //保存健康数据
     public static void saveHealthData(Context context,DataPacket dataPacket){
-        HealthDatabaseHelper healthDatabaseHelper=new HealthDatabaseHelper(context,"HealthDatabase",null,1);
+        HealthDatabaseHelper healthDatabaseHelper= new HealthDatabaseHelper(context,"HealthDatabase",null,1);
         SQLiteDatabase database=healthDatabaseHelper.getWritableDatabase();
         ContentValues contentValues=new ContentValues();
         contentValues.put("date",dataPacket.timeStamp);
@@ -173,6 +178,21 @@ public class MainActivity extends AppCompatActivity implements BLESPPUtils.OnBlu
         contentValues.put("Mc",dataPacket.Mc);
         contentValues.put("acdata",dataPacket.acdata);
         database.insert("HealthData",null,contentValues);
+        database.close();
+    }
+
+    //保存姿态数据
+    public static void savePostureData(Context context,List<Float> yawList,List<Float> pitchList,List<Float> rollList){
+        HealthDatabaseHelper healthDatabaseHelper=new HealthDatabaseHelper(context,"HealthDatabase",null,1);
+        SQLiteDatabase database=healthDatabaseHelper.getWritableDatabase();
+        ContentValues contentValues=new ContentValues();
+        for(int i=0;i<yawList.size();i++){
+            contentValues.put("ax",yawList.get(i));
+            contentValues.put("ay",pitchList.get(i));
+            contentValues.put("az",rollList.get(i));
+            database.insert("PostureData",null,contentValues);
+            contentValues.clear();
+        }
         database.close();
     }
 
@@ -267,7 +287,7 @@ public class MainActivity extends AppCompatActivity implements BLESPPUtils.OnBlu
             }
             Log.d(TAG, "onReceiveBytes: "+dataStr);
             //姿态识别
-            HealthDataFragment.poseIdentify(dataStr.split("#")[3].split(" "),dataStr.split("#")[4].split(" "),dataStr.split("#")[5].split(" "));
+            HealthDataFragment.poseIdentify(getApplicationContext(),dataStr.split("#")[3].split(" "),dataStr.split("#")[4].split(" "),dataStr.split("#")[5].split(" "));
             //更新健康数据
             HealthDataFragment.onDataUpdate(dataPacket);
             //健康评估
@@ -334,7 +354,7 @@ public class MainActivity extends AppCompatActivity implements BLESPPUtils.OnBlu
 
                 break;
 
-            case R.id.export_data:
+            case R.id.export_health_data:
 
                 new SQLiteToExcel
                         .Builder(this)
@@ -357,13 +377,39 @@ public class MainActivity extends AppCompatActivity implements BLESPPUtils.OnBlu
                                 Toast.makeText(MainActivity.this,"数据导出失败！",Toast.LENGTH_LONG).show();
                             }
                         });
-               /*
-                try {
-                    readHealthData();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                */
+                break;
+
+            case R.id.export_posture_data:
+
+                new SQLiteToExcel
+                        .Builder(this)
+                        .setDataBase(this.getDatabasePath("HealthDatabase").getAbsolutePath())
+                        .setTables("PostureData")
+                        .setOutputFileName("PostureData.xls")
+                        .start(new SQLiteToExcel.ExportListener() {
+                            @Override
+                            public void onStart() {
+
+                            }
+
+                            @Override
+                            public void onCompleted(String s) {
+                                Toast.makeText(MainActivity.this,"数据导出成功！保存路径："+s,Toast.LENGTH_LONG).show();
+                            }
+
+                            @Override
+                            public void onError(Exception e) {
+                                Toast.makeText(MainActivity.this,"数据导出失败！",Toast.LENGTH_LONG).show();
+                            }
+                        });
+                break;
+
+            case R.id.phone_accel:
+                startActivity(new Intent(this,PhoneAccelActivity.class));
+                break;
+
+            case R.id.health_web:
+                startActivity(new Intent(this,HealthWebActivity.class));
                 break;
 
             default:
@@ -373,13 +419,17 @@ public class MainActivity extends AppCompatActivity implements BLESPPUtils.OnBlu
     }
 
     /**
-     * 设备选择对话框控制
+     * 蓝牙设备选择对话框控制
      */
     private class DeviceDialogCtrl {
         private LinearLayout mDialogRootView;
         private ProgressBar mProgressBar;
         private AlertDialog mConnectDeviceDialog;
 
+        /**
+         * 初始化，设置基本布局
+         * @param context
+         */
         DeviceDialogCtrl(Context context) {
             // 搜索进度条
             mProgressBar = new ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal);

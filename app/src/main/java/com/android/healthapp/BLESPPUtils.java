@@ -15,7 +15,6 @@ import java.io.InputStream;
 import java.util.Formatter;
 import java.util.UUID;
 
-
 /**
  * 蓝牙工具类 2020/5/18
  * 功能：搜索蓝牙设备
@@ -24,6 +23,7 @@ import java.util.UUID;
  *      接收串口数据
  * @author gtf35 gtf@gtf35.top
  */
+
 class BLESPPUtils {
     private static boolean mEnableLogOut = false;
     private Context mContext;

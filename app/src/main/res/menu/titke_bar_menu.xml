@@ -2,15 +2,33 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
-        android:id="@+id/export_data"
-        android:title="@string/title_export_data"
+        android:id="@+id/export_health_data"
+        android:title="@string/title_export_health_data"
         app:showAsAction="withText"/>
+
+    <item
+        android:id="@+id/export_posture_data"
+        android:title="@string/title_export_posture_data"
+        app:showAsAction="withText"/>
+
     <item
         android:id="@+id/connected_bt"
         app:showAsAction="withText"
         android:title="@string/title_connectedBT"/>
+
     <item
         android:id="@+id/connect_bt"
         android:title="@string/title_connectBT"
         app:showAsAction="withText"/>
+
+    <item
+        android:id="@+id/phone_accel"
+        android:title="@string/title_phone_accel"
+        app:showAsAction="withText"/>
+
+    <item
+        android:id="@+id/health_web"
+        android:title="@string/title_health_web"
+        app:showAsAction="withText"/>
+
 </menu>

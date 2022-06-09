@@ -1,28 +1,20 @@
 package com.android.healthapp.ui.remote;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
-import android.text.Editable;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.Observer;
-import androidx.lifecycle.ViewModelProvider;
 
 import com.android.healthapp.MainActivity;
 import com.android.healthapp.R;
-import com.android.healthapp.databinding.FragmentRemoteBinding;
 import com.android.healthapp.ui.healthData.HealthDataFragment;
 
 import org.eclipse.paho.android.service.MqttAndroidClient;
@@ -33,18 +25,10 @@ import org.eclipse.paho.client.mqttv3.MqttCallback;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.math.BigInteger;
-import java.security.PublicKey;
-import java.util.Random;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 
 public class RemoteFragment extends Fragment {
 
@@ -131,7 +115,7 @@ public class RemoteFragment extends Fragment {
 
         private Context mContext;
         private MqttAndroidClient mqttAndroidClient;
-        private String clientId="d6722eed3eb44c5dbdc4ab78aed5c826";//自定义
+        private String clientId="d6722eed3eb44c5dbdc4ab78aed5c826";//巴法云平台客户端ID
 
         private MqttConnectOptions mqttConnectOptions;
 
@@ -145,8 +129,7 @@ public class RemoteFragment extends Fragment {
 
         public void buildClient() {
             closeMQTT();//先关闭上一个连接
-
-            buildMQTTClient();
+            buildMQTTClient();//创建MQTT客户端
         }
 
         private IMqttActionListener iMqttActionListener = new IMqttActionListener() {
@@ -204,15 +187,12 @@ public class RemoteFragment extends Fragment {
         };
 
         private void buildMQTTClient(){
-            //mqttAndroidClient = new MqttAndroidClient(mContext, MQTTCons.Broker, clientId);
             mqttAndroidClient = new MqttAndroidClient(mContext, "tcp://bemfa.com:9501", clientId);
             mqttAndroidClient.setCallback(mqttCallback);
-
             mqttConnectOptions = new MqttConnectOptions();
             mqttConnectOptions.setConnectionTimeout(10);
             mqttConnectOptions.setKeepAliveInterval(20);
             mqttConnectOptions.setCleanSession(true);
-
             doClientConnection();
         }
 
@@ -321,6 +301,4 @@ public class RemoteFragment extends Fragment {
             Log.d(TAG, "TVLog: "+msg);
         }
     }
-
-
 }

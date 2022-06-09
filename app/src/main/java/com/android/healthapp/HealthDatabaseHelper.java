@@ -20,6 +20,18 @@ public class HealthDatabaseHelper extends SQLiteOpenHelper {
             +"Mc integer,"
             +"acdata blob)";
 
+    private final String CREATE_POSTURE_DATA="create table PostureData ("
+            +"id integer primary key autoincrement,"
+            +"ax real,"
+            +"ay real,"
+            +"az real)";
+
+    private final String CREATE_PHONE_ACC_DATA="create table PhoneAccData ("
+            +"id integer primary key,"
+            +"ax real,"
+            +"ay real,"
+            +"az real)";
+
     public HealthDatabaseHelper(@Nullable Context context, @Nullable String name, @Nullable SQLiteDatabase.CursorFactory factory, int version) {
         super(context, name, factory, version);
         mContext=context;
@@ -28,6 +40,8 @@ public class HealthDatabaseHelper extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase sqLiteDatabase) {
         sqLiteDatabase.execSQL(CREATE_HEALTH_DATA);
+        sqLiteDatabase.execSQL(CREATE_POSTURE_DATA);
+        sqLiteDatabase.execSQL(CREATE_PHONE_ACC_DATA);
     }
 
     @Override

@@ -1,17 +1,17 @@
 package com.android.healthapp.ui.healthData;
 
+import android.content.Context;
 import android.graphics.Color;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import com.android.healthapp.MainActivity;
 import com.android.healthapp.R;
-import com.android.healthapp.ui.healthAssess.HealthAssessFragment;
 import com.android.healthapp.ui.remote.RemoteFragment;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.data.Entry;
@@ -21,21 +21,25 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
+import java.util.Random;
 
 public class HealthDataFragment extends Fragment {
 
     private static LineChart acLineChart;
     private static LineChart tempLineChart,spo2LineChart,hrLineChart,spLineChart,dpLineChart,mcLineChart;
     private static TextView tempTextView,spo2TextView,hrTextView,spTextView,dpTextView,mcTextView,stateTextView;
+    public static ImageView postureImageView;
     private static List<List<Entry>> dataList=new ArrayList<>();
     private static int count=0;
     private static Queue<byte[]> queue=new LinkedList<>();
 
-    private static List<Float> yawList = new LinkedList<>();
-    private static List<Float> pitchList = new LinkedList<>();
-    private static List<Float> rollList = new LinkedList<>();
+    private static List<Float> axList = new LinkedList<>();
+    private static List<Float> ayList = new LinkedList<>();
+    private static List<Float> azList = new LinkedList<>();
 
     public static int btDetect=0;
+
+    private static int postureIndex=0;
 
     static String TAG="HealthDataFragment";
 
@@ -58,6 +62,7 @@ public class HealthDataFragment extends Fragment {
         mcTextView=view.findViewById(R.id.mc);
 
         stateTextView=view.findViewById(R.id.state);
+        postureImageView=view.findViewById(R.id.posture);
 
         if(HealthDataFragment.isBtDetect()==1) stateTextView.setText("蓝牙监控");
         else if(RemoteFragment.isRemoteDetect()==1) stateTextView.setText("远程监控");
@@ -65,6 +70,31 @@ public class HealthDataFragment extends Fragment {
         for(int i=0;i<6;i++){
             dataList.add(new ArrayList<>());
         }
+
+        postureImageView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                switch (postureIndex){
+                    case 0:
+                        postureImageView.setImageResource(R.drawable.sitting);
+                        break;
+
+                    case 1:
+                        postureImageView.setImageResource(R.drawable.walking);
+                        break;
+
+                    case 2:
+                        postureImageView.setImageResource(R.drawable.running);
+                        break;
+
+                    default:
+                        break;
+                }
+                postureIndex++;
+                postureIndex%=3;
+            }
+        });
+        postureImageView.setVisibility(View.GONE);
 
         return view;
     }
@@ -94,6 +124,14 @@ public class HealthDataFragment extends Fragment {
      * 数据更新
      **/
     public static void onDataUpdate(MainActivity.DataPacket dataPacket){
+        if(postureImageView.getVisibility()==View.GONE){
+            postureImageView.post(new Runnable() {
+                @Override
+                public void run() {
+                    postureImageView.setVisibility(View.VISIBLE);
+                }
+            });
+        }
 
         drawLineChart(0,tempLineChart,dataPacket.temp,0,60,tempTextView,"体温","℃");
         drawLineChart(1,spo2LineChart,dataPacket.spo2,0,100,spo2TextView,"血氧","%");
@@ -144,6 +182,7 @@ public class HealthDataFragment extends Fragment {
         lineChart.invalidate();
     }
 
+
     private static void drawLineChart(LineChart lineChart,byte[] acdata){
         List<Entry> list=new ArrayList<>();
         int j=0;
@@ -186,30 +225,32 @@ public class HealthDataFragment extends Fragment {
     /**
      * 姿态识别
      **/
-    public static void poseIdentify(String[] yaw,String[] pitch,String[] roll) {
+    public static void poseIdentify(Context context, String[] yaw, String[] pitch, String[] roll) {
         //Log.d(TAG, "poseIdentify: ypr="+yaw.length+" "+pitch.length+" "+roll.length);
-        //收集分析5s内的姿态数据（50个数据点）
+        //收集分析5s内的姿态数据
         if(count<5){
             count++;
             for(int i=0;i<yaw.length;i++){
-                yawList.add(Float.valueOf(yaw[i]));
+                axList.add(Float.valueOf(yaw[i]));
             }
             for(int i=0;i<pitch.length;i++){
-                pitchList.add(Float.valueOf(pitch[i]));
+                ayList.add(Float.valueOf(pitch[i]));
             }
             for(int i=0;i<roll.length-1;i++){
-                rollList.add(Float.valueOf(roll[i]));
+                azList.add(Float.valueOf(roll[i]));
             }
             //Log.d(TAG, "poseIdentify: yprList="+yawList.size()+" "+pitchList.size()+" "+rollList.size());
         }else{
             count=0;
             //TODO 姿态数据处理
 
+            MainActivity.savePostureData(context, axList, ayList, azList);
 
+            //postureImageView.setImageResource(R.drawable.walking);
 
-            yawList.clear();
-            pitchList.clear();
-            rollList.clear();
+            axList.clear();
+            ayList.clear();
+            azList.clear();
         }
     }
 
